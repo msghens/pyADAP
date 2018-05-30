@@ -1,4 +1,4 @@
-#!/home/mghens/stomper-env/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 #  pyADAP.py
@@ -34,7 +34,9 @@ import xmltodict
 from pprint import pprint
 from person import Person
 from adlib import adlib
-import netrc,base64,zlib
+import base64,zlib
+#import netrc,base64,zlib
+from secure import stompusername,stomppw,stomphost,stompport,stompclientid
 
 
 pool = None
@@ -48,43 +50,53 @@ def isPersonRecord(imsxml):
 
 def run_stomp():
 	#initialize
-	HOST = 'devlum5glassfishstomp'
-	username,account,password = secrets.authenticators( HOST )
+
 	#~ Does connection and loops the stomp connection
-	stomp = Client(host='lum5dev.sbcc.net', port=7672)
+	stomp = Client(host=stomphost, port=int(stompport))
 	try:
-		stomp.connect(username=username,password=password, clientid='pyADAP'  )
-	except:
+		stomp.connect(username=stompusername,password=stomppw, clientid=stompclientid  )
+	except Exception,e:
+		print str(e)
 		sys.exit("Cannot connect to STOMP Server")
 	
-	stomp.subscribe('/topic/com_sct_ldi_sis_LmsSync')
+	stomp.subscribe('/topic/com_sct_ldi_sis_Sync')
+
+#Bad Users
+	disuserset = set()
+	disuserset.add('cemitchum')
+
 	while True:
 		try:
 			message = stomp.get()
 			imsrecord = xmltodict.parse(message.body)
-			pprint(imsrecord)
+			
 			if isPersonRecord(imsrecord):
-				print "Person Record"
-				imsperson = Person(imsrecord)
-				print "Userid: ", imsperson.userid
-				print "Role: ", imsperson.primaryRole
-				print "OU: ", imsperson.ADContainer
-				print "First Name: ", imsperson.fname
-				print "Last Name: ", imsperson.lname
-				print "Sshhh: ", imsperson.password
-				ad = adlib(imsperson)
-				print ad.inAD()
-				if ad.inAD():
-					logger.debug('Changing password for %s', imsperson.userid)
-					ad.chgPwd()
-				else:
-					logger.debug('Adding user to AD %s', imsperson.userid)
-					ad.addUser()
+				try:
+					imsperson = Person(imsrecord)
+				except:
+					logger.info('Person Error: %s', sys.exc_info()[0])
+					continue
 					
+
+				ad = adlib(imsperson)
+
+				try:
+                                        if imsperson.userid in disuserset:
+                                                continue
+					if ad.inAD():
+						logger.debug('Changing password for %s', imsperson.userid)
+						ad.chgPwd()
+					else:
+						logger.debug('Adding user to AD %s', imsperson.userid)
+						ad.addUser()
+				except Exception, err:
+					logger.info('Error processing user to AD %s', imsperson.userid)
+					logger.info('ERROR: %s', str(err))
+					continue
 		except KeyboardInterrupt:
 			print "Shutting Down"
 			logger.info('Keyboard Interupt: Shutting down pyADAP')
-			stomp.unsubscribe('/topic/com_sct_ldi_sis_LmsSync')
+			stomp.unsubscribe('/topic/com_sct_ldi_sis_Sync')
 			stomp.disconnect()
 			sys.exit(0)
 			return
@@ -94,22 +106,22 @@ def initLogging():
 	#Initialize logging
 	LOG_FILENAME = 'logs/pyADAP.log'
 	logger = logging.getLogger('pyADAP')
-	logger.setLevel(logging.DEBUG)
+	logger.setLevel(logging.INFO)
 	
 	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	#Log file handler
 	handler = logging.handlers.RotatingFileHandler(
-					LOG_FILENAME, maxBytes=10*1024*1024, backupCount=3)
+					LOG_FILENAME, maxBytes=1024*1024, backupCount=10)
 
 						
 	#Console gets debug
-	console = logging.StreamHandler()
-	console.setFormatter(formatter)
+	#~ console = logging.StreamHandler()
+	#~ console.setFormatter(formatter)
 	# create formatter and add it to the handlers
-	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+	#~ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	handler.setFormatter(formatter)				
 	logger.addHandler(handler)
-	logger.addHandler(console)
+	#~ logger.addHandler(console)
 
 
 def main():
