@@ -184,7 +184,7 @@ class adlib(object):
 			ldapconn.add_s(user_dn,user_ldif)
 			add_member = [(ldap.MOD_ADD, 'member', str(user_dn))]
 			ldapconn.modify_s(self.perrec.ADMemberOf,add_member)
-			#ldapconn.modify_s(user_dn,mod_acct)
+			ldapconn.modify_s(user_dn,mod_acct)
 		self.chgPwd()
 		logger.info('User added to AD: %s', user_dn)
 	
