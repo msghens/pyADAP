@@ -190,7 +190,7 @@ class adlib(object):
 		# Build User
 		
 		if self.perrec.ADContainer == 'noOU':
-			logger.debug('User does not have container')
+			logger.debug("User does not have container: %s" % self.perrec.userid)
 			logger.error("AD Account not created for: %s" % self.perrec.userid)
 			#raise ValueError('User not create')
 			return False
@@ -218,15 +218,11 @@ class adlib(object):
 			logger.info('Adding users: %s', user_dn)
 			ldapconn.add_s(user_dn,user_ldif)
 			
-		time.sleep(5)
-		ad = ADconnection()
-		with ad as ldapconn:
+			time.sleep(1)
 			logger.info('Adding membership: %s', user_dn)
 			add_member = [(ldap.MOD_ADD, 'member', str(user_dn))]
 			ldapconn.modify_s(self.perrec.ADMemberOf,add_member)
-
-		ad = ADconnection()
-		with ad as ldapconn:
+			time.sleep(1)
 			adpass = ('"%s"' % self.perrec.password).encode("utf-16-le")
 			#adpass = base64.b64encode(adpass)
 			# Update Password
@@ -234,8 +230,7 @@ class adlib(object):
 			logger.info('Setting pass: %s', user_dn)
 			ldapconn.modify_s(user_dn,mod_attrs)
 		
-		ad = ADconnection()
-		with ad as ldapconn:
+			time.sleep(1)
 			# 512 will set user account to enabled
 			mod_acct = [(ldap.MOD_REPLACE, 'userAccountControl', '512')]
 			logger.info('Trying to enable user: %s', user_dn)
