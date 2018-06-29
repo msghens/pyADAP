@@ -16,7 +16,7 @@ from person import Person
 import base64,zlib
 import ldap.modlist as modlist
 from secure import ADurl, adusername, adpassword
-
+import time
 
 
 #~ Create a AD connection with clean up. Must be called
@@ -145,10 +145,46 @@ class adlib(object):
 					
 					#work on logging
 
+				
 			except ldap.LDAPError, error_message:
 				#~ print "error finding username: %s" % error_message
 				return False
 			
+        def enableUser(self,cn=None):
+                if cn is None:
+                        cn=self.perrec.userid
+
+                #instatiate class. Why? Who knows...
+                ad = ADconnection()
+                with ad as ldapconn:
+                        try:
+                                searchfilter = ('(&(objectCategory=person)(&(objectClass=user)(sAMAccountName=%s)))' % cn)
+                                logger.debug(searchfilter)
+                                user_results=ldapconn.search_s(self.base_dn,ldap.SCOPE_SUBTREE,searchfilter)
+                                logger.debug(user_results)
+                                dn = user_results[0][0]
+                                #~ print dn
+                                if dn <> None:
+                                        #placeholder for logging
+                                        #print 'updating ' + user['username'],time.ctime()
+                                        #print user_results[0][1]['userAccountControl'][0]
+                                        UC = int(user_results[0][1]['userAccountControl'][0])
+                                        if UC & (1<<1):
+                                                UC = UC & ~(1 << 1)
+                                                UCattrib = (ldap.MOD_REPLACE, 'userAccountControl', str(UC))
+						
+                                                #mod_attrs.append(UCattrib)
+                                                mod_attrs = [(UCattrib)]
+                                                #print mod_attrs
+                                        ldapconn.modify_s( dn, mod_attrs )
+                                        logger.info('Enabled: %s', str(cn))
+
+                                        #work on logging
+
+                        except ldap.LDAPError, error_message:
+                                #~ print "error finding username: %s" % error_message
+                                return False
+
 		
 	def addUser(self):
 		# Build User
@@ -175,17 +211,41 @@ class adlib(object):
 		user_attrs['employeeID'] = str(self.perrec.knumber)
 		user_attrs['employeeNumber'] = str(self.perrec.knumber).strip('K')
 		user_ldif = modlist.addModlist(user_attrs)
-		# 512 will set user account to enabled
-		mod_acct = [(ldap.MOD_REPLACE, 'userAccountControl', '512')]
+		
 		
 		ad = ADconnection()
 		with ad as ldapconn:
-			#~ logger.debug('LDIF' + user_ldif)
+			logger.info('Adding users: %s', user_dn)
 			ldapconn.add_s(user_dn,user_ldif)
+			
+		time.sleep(5)
+		ad = ADconnection()
+		with ad as ldapconn:
+			logger.info('Adding membership: %s', user_dn)
 			add_member = [(ldap.MOD_ADD, 'member', str(user_dn))]
 			ldapconn.modify_s(self.perrec.ADMemberOf,add_member)
+
+		ad = ADconnection()
+		with ad as ldapconn:
+			adpass = ('"%s"' % self.perrec.password).encode("utf-16-le")
+			#adpass = base64.b64encode(adpass)
+			# Update Password
+			mod_attrs = [( ldap.MOD_REPLACE, 'unicodePwd', adpass ),( ldap.MOD_REPLACE, 'unicodePwd', adpass)]
+			logger.info('Setting pass: %s', user_dn)
+			ldapconn.modify_s(user_dn,mod_attrs)
+		
+		ad = ADconnection()
+		with ad as ldapconn:
+			# 512 will set user account to enabled
+			mod_acct = [(ldap.MOD_REPLACE, 'userAccountControl', '512')]
+			logger.info('Trying to enable user: %s', user_dn)
+			logger.info('userAccountControl: %s', mod_acct)
 			ldapconn.modify_s(user_dn,mod_acct)
-		self.chgPwd()
+			
+		#Enable Account
+
+		#self.chgPwd()
+		#self.enableUser()
 		logger.info('User added to AD: %s', user_dn)
 	
 			

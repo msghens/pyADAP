@@ -22,8 +22,6 @@
 #  
 #  
 
-
-
 #~ Python ADAP replacement. This uses Glassfish STOMP for connections
 
 import sys
@@ -37,6 +35,12 @@ from adlib import adlib
 import base64,zlib
 #import netrc,base64,zlib
 from secure import stompusername,stomppw,stomphost,stompport,stompclientid
+
+from expiringdict import ExpiringDict
+
+# To prevent beating up on google
+cache = ExpiringDict(max_len=100, max_age_seconds=60)
+
 
 
 pool = None
@@ -86,9 +90,17 @@ def run_stomp():
 					if ad.inAD():
 						logger.debug('Changing password for %s', imsperson.userid)
 						ad.chgPwd()
-					else:
+					elif cache.get(imsperson.userid) is None:
 						logger.debug('Adding user to AD %s', imsperson.userid)
 						ad.addUser()
+						#ad.chgPwd()
+						#ad.enableUser()
+						#Just need an entry
+						cache[imsperson.userid] = imsperson.userid
+					else:
+						logger.debug('Not adding, in Cache: %s', imsperson.userid)
+						
+							
 				except Exception, err:
 					logger.info('Error processing user to AD %s', imsperson.userid)
 					logger.info('ERROR: %s', str(err))
@@ -117,6 +129,7 @@ def initLogging():
 	#Console gets debug
 	#~ console = logging.StreamHandler()
 	#~ console.setFormatter(formatter)
+	# create formatter and add it to the handlers
 	# create formatter and add it to the handlers
 	#~ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	handler.setFormatter(formatter)				
