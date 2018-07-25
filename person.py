@@ -74,7 +74,8 @@ class Person(object):
 			'Primaryadjfac'  : 'OU=Users,OU=Adjunct Faculty,DC=sbcc,DC=local',
 			'Primarystaff'   : 'OU=Users,OU=Staff,DC=sbcc,DC=local',
 			'Primaryfaculty' : 'OU=Users,OU=Faculty,DC=sbcc,DC=local',
-			}.get(role, 'noOU')
+			'Primaryretiree'   : 'OU=Users,OU=Staff,DC=sbcc,DC=local',
+			}.get(role, 'OU=Users,OU=Students,DC=sbcc,DC=local') #Used to be noOU. change to student as default
 	
 	def getMemberOf(self,role):
 		return {
@@ -82,7 +83,8 @@ class Person(object):
 			'Primaryadjfac'  : 'CN=AdjunctFaculty,CN=ForeignSecurityPrincipals,DC=sbcc,DC=local',
 			'Primarystaff'   : 'CN=Staff,CN=ForeignSecurityPrincipals,DC=sbcc,DC=local',
 			'Primaryfaculty' : 'CN=FullTimeFaculty,CN=ForeignSecurityPrincipals,DC=sbcc,DC=local',
-			}.get(role, 'noOU')
+			'Primaryretiree'   : 'CN=Staff,CN=ForeignSecurityPrincipals,DC=sbcc,DC=local',
+			}.get(role, 'CN=Students,CN=ForeignSecurityPrincipals,DC=sbcc,DC=local') #Used to be noOU. change to student as default
 	
 	def getFname(self,imsxml):
 		return imsxml['enterprise']['person']['name']['n']['given']
