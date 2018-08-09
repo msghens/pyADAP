@@ -53,18 +53,26 @@ class Person(object):
 		
 
 	def getPrimaryRole(self,imsxml):
-		if type(imsxml['enterprise']['person']['extension']['luminisperson']['customrole']) is unicode:
-			role = imsxml['enterprise']['person']['extension']['luminisperson']['customrole']
-			if role.startswith('Primary'):
-				logger.debug('Primary Role: %s', role)
-				return role
-			else:
-				logger.debug('Primary Role: none')
-				return 'none'
-		for role in imsxml['enterprise']['person']['extension']['luminisperson']['customrole']:
-			if role.startswith('Primary'): 
-				logger.debug('Primary Role: %s', role)
-				return role
+		try:
+			if type(imsxml['enterprise']['person']['extension']['luminisperson']['customrole']) is unicode:
+				role = imsxml['enterprise']['person']['extension']['luminisperson']['customrole']
+				if role.startswith('Primary'):
+					logger.debug('Primary Role: %s', role)
+					return role
+				else:
+					logger.debug('Primary Role: none')
+					return 'none'
+		except:
+			pass
+		
+		try:
+			for role in imsxml['enterprise']['person']['extension']['luminisperson']['customrole']:
+				if role.startswith('Primary'): 
+					logger.debug('Primary Role: %s', role)
+					return role
+			
+		except:
+			pass
 		logger.debug('Primary Role: none')
 		return 'none'
 		
